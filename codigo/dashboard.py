@@ -12,6 +12,7 @@ Uso:
 import streamlit as st
 import json
 import time
+import uuid
 import pandas as pd
 import altair as alt
 from kafka import KafkaConsumer
@@ -44,6 +45,10 @@ if 'total_viajes' not in st.session_state:
     st.session_state['total_viajes'] = 0
 if 'ultima_tarifa' not in st.session_state:
     st.session_state['ultima_tarifa'] = 0.0
+# Cada sesion del navegador usa su propio grupo de Kafka. Asi cada visitante
+# recibe TODOS los viajes (todas las particiones) y no compite con los demas.
+if 'consumer_group' not in st.session_state:
+    st.session_state['consumer_group'] = f"dashboard-{uuid.uuid4().hex[:8]}"
 
 
 # ==============================================================================
@@ -177,7 +182,7 @@ def main():
             TOPIC,
             bootstrap_servers=KAFKA_BROKERS,
             auto_offset_reset='latest',
-            group_id='dashboard-monitor-cloud',
+            group_id=st.session_state['consumer_group'],
             value_deserializer=lambda x: json.loads(x.decode('utf-8'))
         )
     except Exception:
