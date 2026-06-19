@@ -1,5 +1,5 @@
 """
-ARCHIVISTA KAFKA → S3 (Python puro)
+ARCHIVISTA KAFKA -> S3 (Python puro)
 ====================================
 Consume eventos de Kafka (viajes.taxi) y los guarda en S3 como JSON.
 Alternativa simple al job de Flink que funciona en cualquier máquina.
@@ -31,7 +31,7 @@ FLUSH_INTERVAL = 30   # O cada N segundos (lo que ocurra primero)
 # INICIALIZACIÓN
 # ==============================================================================
 print("=" * 60)
-print("[ARCHIVISTA] Kafka → S3")
+print("[ARCHIVISTA] Kafka -> S3")
 print(f"[CONF] Topic: {TOPIC}")
 print(f"[CONF] Bucket: s3://{S3_BUCKET}/{S3_PREFIX}/")
 print(f"[CONF] Batch: cada {BATCH_SIZE} mensajes o {FLUSH_INTERVAL}s")
@@ -70,7 +70,7 @@ def flush_to_s3(records):
     s3.put_object(Bucket=S3_BUCKET, Key=key, Body=body.encode('utf-8'))
     
     total_archivados += len(records)
-    print(f"[S3] {len(records)} registros → s3://{S3_BUCKET}/{key} (total: {total_archivados})")
+    print(f"[S3] {len(records)} registros -> s3://{S3_BUCKET}/{key} (total: {total_archivados})")
 
 try:
     while True:
