@@ -19,8 +19,9 @@ aws s3 rm "$BUCKET/viajes_raw/"     --recursive --only-show-errors
 aws s3 rm "$BUCKET/reportes_flink/" --recursive --only-show-errors
 aws s3 rm "$BUCKET/reportes/"       --recursive --only-show-errors
 
-echo ">>> Borrando salida local de Flink..."
+echo ">>> Borrando salida local de Flink y la copia local de Spark..."
 rm -rf /home/ec2-user/flink_salida/*
+rm -rf /home/ec2-user/viajes_local /home/ec2-user/out_zonas /home/ec2-user/out_stats
 
 echo ">>> Verificando que quedo en cero:"
 echo "  viajes_raw:     $(aws s3 ls $BUCKET/viajes_raw/ --recursive | wc -l)"

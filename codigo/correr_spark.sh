@@ -10,7 +10,9 @@ BUCKET="s3://proyecto-taxis-cloud-2026"
 
 echo ">>> 1/4 Sincronizando datos crudos de S3 a local..."
 mkdir -p ~/viajes_local
-aws s3 sync "$BUCKET/viajes_raw/" ~/viajes_local/ --only-show-errors
+# --delete: la copia local refleja EXACTAMENTE lo que hay en S3 ahora
+# (sin esto, quedarian datos viejos de corridas anteriores).
+aws s3 sync "$BUCKET/viajes_raw/" ~/viajes_local/ --delete --only-show-errors
 echo "    archivos locales: $(ls ~/viajes_local | wc -l)"
 
 echo ">>> 2/4 Ejecutando Spark (modo local)..."
