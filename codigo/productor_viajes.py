@@ -23,7 +23,7 @@ KAFKA_BROKERS = [
 ]
 TOPIC = 'viajes.taxi'
 PARQUET_PATH = 'yellow_tripdata_2024-01.parquet'
-INTERVALO_SEGUNDOS = 0.1  # Pausa entre envíos
+INTERVALO_SEGUNDOS = 0.15  # Pausa entre envíos (~6-7 viajes por segundo)
 
 # ==============================================================================
 # CARGA DE DATOS
