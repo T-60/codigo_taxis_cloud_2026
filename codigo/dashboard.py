@@ -96,6 +96,10 @@ def main():
     with tab_monitor:
         st.markdown("### Indicadores en Tiempo Real")
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+        k1_ph = kpi1.empty()
+        k2_ph = kpi2.empty()
+        k3_ph = kpi3.empty()
+        k4_ph = kpi4.empty()
 
         st.markdown("---")
         st.markdown("### Bitácora de Viajes Recientes")
@@ -204,10 +208,10 @@ def main():
             st.session_state['data_buffer'].pop()
 
         # Actualizar KPIs
-        kpi1.metric("Viajes Totales", st.session_state['total_viajes'])
-        kpi2.metric("Ingresos Totales", f"${st.session_state['total_ingresos']:,.2f}")
-        kpi3.metric("Tarifa Promedio", f"${promedio:.2f}")
-        kpi4.metric("Última Tarifa", f"${precio:.2f}")
+        k1_ph.metric("Viajes Totales", st.session_state['total_viajes'])
+        k2_ph.metric("Ingresos Totales", f"${st.session_state['total_ingresos']:,.2f}")
+        k3_ph.metric("Tarifa Promedio", f"${promedio:.2f}")
+        k4_ph.metric("Última Tarifa", f"${precio:.2f}")
 
         # Actualizar tabla
         df = pd.DataFrame(st.session_state['data_buffer'])
