@@ -30,6 +30,7 @@ TOPIC = 'viajes.taxi'
 S3_BUCKET = 'proyecto-taxis-cloud-2026'
 S3_KEY_ZONAS = 'reportes/zonas_rentables'
 S3_KEY_STATS = 'reportes/estadisticas'
+S3_KEY_FLINK = 'reportes_flink/'
 MAX_ROWS = 200
 
 st.set_page_config(page_title="Monitoreo de taxis NYC", layout="wide")
@@ -70,6 +71,30 @@ def leer_csv_s3(bucket, prefix):
         return pd.DataFrame()
 
 
+def leer_jsonl_s3(bucket, prefix):
+    """Lee los archivos part-* que deja Flink (un JSON por linea) y los junta.
+
+    Flink va dejando un archivo por cada rotacion; aqui los leemos todos y los
+    devolvemos como una sola tabla de ventanas.
+    """
+    try:
+        s3 = boto3.client('s3')
+        response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+        filas = []
+        for obj in response.get('Contents', []):
+            if 'part-' not in obj['Key']:
+                continue
+            cuerpo = s3.get_object(Bucket=bucket, Key=obj['Key'])['Body'].read().decode('utf-8')
+            for linea in cuerpo.splitlines():
+                linea = linea.strip()
+                if linea:
+                    filas.append(json.loads(linea))
+        return pd.DataFrame(filas)
+    except Exception as e:
+        st.warning(f"No se pudo leer Flink desde S3: {e}")
+        return pd.DataFrame()
+
+
 def pintar_estado_actual(k1, k2, k3, k4, tabla):
     """Dibuja en los indicadores y la tabla lo ultimo que tenemos guardado.
 
@@ -100,7 +125,9 @@ def main():
     st.title("Monitoreo de taxis de Nueva York")
     st.caption("Proyecto de Cloud Computing - EC2, MSK, EMR y S3")
 
-    tab_monitor, tab_batch = st.tabs(["Monitor en vivo", "Reportes batch"])
+    tab_monitor, tab_flink, tab_batch = st.tabs(
+        ["Monitor en vivo", "Streaming Flink", "Reportes batch"]
+    )
 
     # -------------------------------------------------------------------------
     # Pestana 1: monitor en vivo (Kafka)
@@ -121,11 +148,51 @@ def main():
         pintar_estado_actual(k1_ph, k2_ph, k3_ph, k4_ph, tabla_placeholder)
 
     # -------------------------------------------------------------------------
-    # Pestana 2: reportes batch (S3)
+    # Pestana 2: streaming con Apache Flink (S3)
+    # -------------------------------------------------------------------------
+    with tab_flink:
+        st.subheader("Agregados en streaming (Apache Flink)")
+        st.caption("Apache Flink lee los viajes de Kafka en tiempo real y los agrupa por "
+                   "zona en ventanas de 20 segundos. Cada ventana cerrada se guarda en S3. "
+                   "A diferencia del batch, aqui Flink calcula sobre el flujo, sin esperar "
+                   "a tener todos los datos.")
+
+        st.button("Actualizar agregados de Flink")
+        st.markdown("---")
+
+        df_flink = leer_jsonl_s3(S3_BUCKET, S3_KEY_FLINK)
+
+        if not df_flink.empty:
+            df_flink = df_flink.sort_values("ventana_fin", ascending=False)
+
+            f1, f2, f3 = st.columns(3)
+            f1.metric("Ventanas calculadas", len(df_flink))
+            f2.metric("Viajes agregados", f"{int(df_flink['viajes'].sum()):,}")
+            f3.metric("Ingresos agregados", f"${df_flink['ingresos'].sum():,.2f}")
+
+            # Viajes por ventana a lo largo del tiempo
+            por_ventana = (df_flink.groupby("ventana_fin", as_index=False)["viajes"]
+                           .sum().sort_values("ventana_fin").tail(30))
+            chart_f = alt.Chart(por_ventana).mark_line(point=True).encode(
+                x=alt.X("ventana_fin:N", title="Fin de ventana"),
+                y=alt.Y("viajes:Q", title="Viajes en la ventana"),
+                tooltip=["ventana_fin", "viajes"]
+            ).properties(height=300)
+            st.altair_chart(chart_f, use_container_width=True)
+
+            st.markdown("**Ultimas ventanas procesadas**")
+            st.dataframe(df_flink.head(50), use_container_width=True, height=380)
+        else:
+            st.info("Aun no hay ventanas de Flink en S3. El job tarda alrededor de un "
+                    "minuto desde que arranca en escribir la primera.")
+
+    # -------------------------------------------------------------------------
+    # Pestana 3: reportes batch (S3)
     # -------------------------------------------------------------------------
     with tab_batch:
         st.subheader("Reportes historicos (procesados por Spark)")
-        st.caption("Datos del analisis batch en EMR, guardados en S3.")
+        st.caption("Foto del ultimo procesamiento batch con Spark, guardada en S3. "
+                   "No cambia en tiempo real: se actualiza al volver a ejecutar el job de Spark.")
 
         # Al pulsar el boton, Streamlit recarga la pagina y se vuelven a leer
         # los CSV de S3 de mas abajo. No hace falta nada mas.
