@@ -33,4 +33,6 @@ echo "Archivista: $(ps -eo cmd | grep -c "[a]rchivista_kafka_s3") proceso"
 echo "Flink:      $(ps -eo cmd | grep -c "[j]ob_flink_streaming") proceso (tarda ~1min en escribir a S3)"
 echo "Publicador: $(ps -eo cmd | grep -c "[s]ubir_flink_s3") proceso"
 echo "Dashboard:  puerto 8501 -> $(ss -tln | grep -c :8501) (1=ok)"
-echo "Listo. Abre http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4):8501"
+TOK=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
+IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOK" http://169.254.169.254/latest/meta-data/public-ipv4)
+echo "Listo. Abre http://$IP:8501"
